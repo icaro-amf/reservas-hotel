@@ -98,5 +98,5 @@ Detalhes em `uso-de-ia/declaracao.md`.
 - [x] O relatório segue o contrato acima.
 - [x] `pytest -q` passa com os testes fornecidos.
 - [x] `entrega/README-ENTREGA.md` preenchido.
-- [ ] Sessão + declaração apenas no caminho com IA; investigação no README-ENTREGA nos dois caminhos.
-- [ ] Repositório público no GitHub com o projeto e o link enviado.
+- [x] Sessão + declaração apenas no caminho com IA; investigação no README-ENTREGA nos dois caminhos.
+- [x] Repositório público no GitHub com o projeto e o link enviado.
