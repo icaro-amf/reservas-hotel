@@ -7,7 +7,7 @@ import json
 import logging
 from pathlib import Path
 
-from .exceptions import InputFileError
+from .exceptions import DomainError
 from .logging_config import configure_logging
 from .repositories.csv_rate_repository import CsvRateRepository
 from .repositories.csv_reservation_repository import CsvReservationRepository
@@ -42,7 +42,7 @@ def main(argv: list[str] | None = None) -> int:
             rate_repository=CsvRateRepository(Path(args.rates)),
             top_n=args.top,
         ).build()
-    except InputFileError as err:
+    except DomainError as err:
         logger.error("falha ao ler a entrada: %s", err)
         return 2
     except Exception:

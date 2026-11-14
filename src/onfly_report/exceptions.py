@@ -7,3 +7,7 @@ class DomainError(Exception):
 
 class InputFileError(DomainError):
     """Arquivo de entrada ausente, ilegível ou fora do formato esperado."""
+
+
+class DataValidationError(DomainError):
+    """Erro de validação de dados (data incoerente, moeda sem taxa)."""

@@ -17,17 +17,17 @@
 3. Comparei a saída da amostra `data/exemplo-validacao.csv` com a tabela de validação do README; isso expôs o ranking invertido de `top_hotels`.
 4. Comparei o total de reservas do relatório com o número de linhas do CSV (300) e encontrei o limite fixo de 200 na leitura.
 5. Corrigi um defeito por vez e validei cada um com o teste correspondente e com a amostra.
-6. Usei IA (OpenCode/Nemotron) para o plano de ação inicial e revisei todas as sugestões antes de aplicar.
+6. Usei IA (OpenCode/Nemotron e Big Pickle) para o plano de ação inicial e revisei todas as sugestões antes de aplicar.
 
 ## Correções em detalhe
 
 **1. Conversão de moeda (`currency_converter.py`)**
-O código original fazia `Decimal(str(float(amount) / float(rate)))`, ou seja, dividia pela taxa e passava por `float`. Agora `convert_to_brl` multiplica `amount * rate_to_brl` e retorna `Decimal`; moeda ausente na tabela gera uma exceção explícita.
+O código original fazia `Decimal(str(float(amount) / float(rate)))`, ou seja, dividia pela taxa e passava por `float`. Agora `convert_to_brl` multiplica `amount * rate_to_brl` e retorna `Decimal`; moeda ausente na tabela gera `DataValidationError`, que o CLI trata como entrada inválida (código de saída `2`).
 Validação: `pytest tests/test_currency.py -q` passou.
 
 **2. Cálculo de noites (`stay_calculator.py`)**
-O código original usava `(checkout.day - checkin.day) * rooms`, que compara apenas o dia do mês. Agora usa `(checkout - checkin).days * rooms`, com validação de que o check-in é anterior ao check-out.
-Validação: `pytest tests/test_nights.py -q` e `pytest tests/test_regression_report.py -q` passaram.
+O código original usava `(checkout.day - checkin.day) * rooms`, que compara apenas o dia do mês. Agora usa `(checkout - checkin).days * rooms`, com validação de que o check-in é anterior ao check-out (`DataValidationError`, coberta por `tests/test_invalid_date.py`).
+Validação: `pytest tests/test_nights.py -q`, `pytest tests/test_regression_report.py -q` e `pytest tests/test_invalid_date.py -q` passaram.
 
 **3. Política de status (`status_policy.py`)**
 `is_billable` retornava `status != "CANCELLED"`, então `NO_SHOW` entrava nos totais. Agora retorna `status == "CONFIRMED"`; `CANCELLED` e `NO_SHOW` contam apenas nas contagens por status.
@@ -40,6 +40,17 @@ Validação: `pytest tests/test_top_hotels.py -q` passou e a amostra devolve `H0
 **5. Leitura do CSV (`csv_reservation_repository.py`)**
 A leitura parava em 200 linhas por causa de um `if len(rows) == 200: break`. Removi o limite; o relatório agora lê as 300 reservas do arquivo.
 Validação: no dataset real, `total_reservations = 300` (235 `CONFIRMED`, 31 `CANCELLED`, 34 `NO_SHOW`).
+
+## Melhoria adicional — tratamento de entrada inválida
+
+Além dos 5 defeitos, ajustei o tratamento de erros para que dados semanticamente inválidos retornem o código de saída `2` (entrada inválida), e não `1` (erro inesperado):
+
+- Nova exceção `DataValidationError` em `exceptions.py`, herdando de `DomainError`.
+- `stay_calculator.py` e `currency_converter.py` passaram a lançar `DataValidationError` para data incoerente e moeda sem taxa, respectivamente.
+- `cli.py` passou a capturar `DomainError`, cobrindo `InputFileError` e `DataValidationError` com o mesmo retorno `2`.
+- Novo teste `tests/test_invalid_date.py` cobre check-in posterior ao check-out.
+
+Validação: com data invertida e com moeda fora da tabela, o CLI retorna `2` e não grava o relatório; o caso válido continua retornando `0`.
 
 ## Como validar
 
@@ -80,11 +91,12 @@ PYTHONPATH=src python -m onfly_report --input data/exemplo-validacao.csv --rates
 
 Resultado esperado: `12` reservas, `9` confirmadas, `28` noites, `7566.00` BRL; `by_month` 2025-01 (8/25/6684.00) e 2025-02 (1/3/882.00); `top_hotels` H01, H02, H12, H10, H09.
 
+Entrada inválida (data invertida ou moeda sem taxa na tabela) retorna código de saída `2` e não gera relatório; sucesso retorna `0`.
+
 ## Resultado do pytest
 
 ```
-.....                                                                    [100%]
-5 passed in 0.66s
+6 passed
 ```
 
 ## Uso de IA
